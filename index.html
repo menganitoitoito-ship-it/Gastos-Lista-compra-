@@ -791,10 +791,109 @@ function renderItems(){
   el.innerHTML=html;
 }
 
+function getPriceHistory(name){
+  try{ var ph=ld('hg_ph',{}); return ph[(name||'').toLowerCase().trim()]||[]; }catch(e){ return []; }
+}
+function savePriceHistory(name,price,shop,date){
+  if(!name||!price||price<=0) return;
+  try{
+    var ph=ld('hg_ph',{});
+    var key=(name||'').toLowerCase().trim();
+    if(!ph[key]) ph[key]=[];
+    var last=ph[key][ph[key].length-1];
+    if(!last||last.price!==price){
+      ph[key].push({price:price,shop:shop||'',date:date||today(),ts:Date.now()});
+      ph[key]=ph[key].slice(-20);
+      sv('hg_ph',ph);
+    }
+  }catch(e){}
+}
+function getPriceChange(name,currentPrice){
+  if(!currentPrice||currentPrice<=0||!name) return null;
+  var hist=getPriceHistory(name);
+  if(hist.length<2) return null;
+  var prev=hist[hist.length-2].price;
+  if(Math.abs(prev-currentPrice)<0.001) return null;
+  var pct=Math.round((currentPrice-prev)/prev*100);
+  return {prev:prev,pct:pct,up:currentPrice>prev};
+}
+function quickEditPrice(id){
+  var i=items.find(function(x){ return x.id===id; }); if(!i) return;
+  var val=prompt('Precio de '+i.name+' (€):',i.price||'');
+  if(val===null) return;
+  var p=parseFloat(val);
+  if(!isNaN(p)&&p>=0){
+    i.price=p;
+    savePriceHistory(i.name,p,'',today());
+    sv('hg_items',items); renderList();
+    toast('✓ Precio actualizado');
+  }
+}
+function editItem(id){
+  var i=items.find(function(x){ return x.id===id; }); if(!i) return;
+  // Reuse item modal in edit mode
+  selICat=i.catId||'otros'; itemPhotoData=i.photo||null;
+  document.getElementById('iName').value=i.name||'';
+  document.getElementById('iQty').value=i.qty||1;
+  document.getElementById('iUnit').value=i.unit||'ud';
+  document.getElementById('iPrice').value=i.price||'';
+  document.getElementById('iNotes').value=i.notes||'';
+  document.getElementById('iPhotoName').textContent=i.photo?'Foto adjunta':'Sin foto';
+  document.getElementById('iPhotoPreview').style.display=i.photo?'block':'none';
+  if(i.photo) document.getElementById('iPhotoPreview').src=i.photo;
+  document.getElementById('iCatPick').innerHTML=ICATS.map(function(c){
+    return '<div class="cgp'+(c.id===selICat?' on':'')+'" title="'+c.name+'" data-c="'+c.id+'" onclick="selIC(this,\''+c.id+'\')">'+c.ico+'</div>';
+  }).join('');
+  document.getElementById('iListSel').innerHTML=lists.map(function(l){
+    return '<option value="'+l.id+'"'+(l.id===i.listId?' selected':'')+'>'+l.icon+' '+l.name+'</option>';
+  }).join('');
+  document.getElementById('itemModalTitle').textContent='Editar artículo';
+  // Override save to edit instead of add
+  document.querySelector('#ovItem .btn-gr').onclick=function(){ updateItem(id); };
+  showOv('ovItem');
+}
+function updateItem(id){
+  var i=items.find(function(x){ return x.id===id; }); if(!i) return;
+  var name=document.getElementById('iName').value.trim();
+  if(!name){ toast('Introduce un nombre'); return; }
+  var newPrice=parseFloat(document.getElementById('iPrice').value)||0;
+  var oldPrice=i.price;
+  i.name=name; i.qty=parseFloat(document.getElementById('iQty').value)||1;
+  i.unit=document.getElementById('iUnit').value; i.price=newPrice;
+  i.catId=selICat; i.notes=document.getElementById('iNotes').value.trim();
+  if(itemPhotoData) i.photo=itemPhotoData;
+  i.listId=document.getElementById('iListSel').value||i.listId;
+  if(newPrice>0) savePriceHistory(name,newPrice,'',today());
+  sv('hg_items',items); hideOv('ovItem'); renderList();
+  if(oldPrice>0&&newPrice>0&&oldPrice!==newPrice){
+    var diff=newPrice-oldPrice, pct=Math.round(diff/oldPrice*100);
+    toast((diff>0?'▲ Subió ':'▼ Bajó ')+Math.abs(pct)+'% ('+f2(Math.abs(diff))+'€)');
+  } else { toast('✓ Artículo actualizado'); }
+  // Restore save button
+  document.querySelector('#ovItem .btn-gr').onclick=saveItem;
+}
+
 function itemRowHTML(i,cat){
   var qty=(i.qty&&i.qty!=1)?i.qty+' '+i.unit:'';
-  var price=(i.price&&i.price>0)?f2(i.price)+'€':'';
-  var subtotal=(i.price&&i.price>0&&i.qty>1)?'= '+f2(i.price*i.qty)+'€':'';
+  var hasPrice=i.price&&i.price>0;
+  var price=hasPrice?f2(i.price)+'€':'';
+  var subtotal=(hasPrice&&i.qty>1)?'= '+f2(i.price*i.qty)+'€':'';
+  var change=hasPrice?getPriceChange(i.name,i.price):null;
+  var changeHTML='';
+  if(change){
+    var bg=change.up?'rgba(255,91,91,.15)':'rgba(46,201,122,.15)';
+    var col=change.up?'var(--red)':'var(--green)';
+    changeHTML='<span style="font-size:10px;font-weight:700;padding:1px 5px;border-radius:20px;background:'+bg+';color:'+col+'">'+
+      (change.up?'▲':'▼')+Math.abs(change.pct)+'%</span>';
+  }
+  var prevHTML='';
+  if(hasPrice){
+    var hist=getPriceHistory(i.name);
+    if(hist.length>=2){
+      var prev=hist[hist.length-2].price;
+      prevHTML='<span style="font-size:10px;color:var(--t3);font-family:monospace;text-decoration:line-through">'+f2(prev)+'€</span>';
+    }
+  }
   return '<div class="irow anim'+(i.checked?' chk':'')+'" onclick="togItem(\''+i.id+'\')">'+
     (i.photo?'<img class="iimg" src="'+i.photo+'" alt="">':'')+
     '<div class="ichk">'+(i.checked?'✓':'')+'</div>'+
@@ -805,12 +904,15 @@ function itemRowHTML(i,cat){
         (subtotal?'<span style="color:var(--amber);font-family:monospace">'+subtotal+'</span>':'')+
       '</div>'+
     '</div>'+
-    (price?'<div class="iprice">'+price+'</div>':'')+
+    '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">'+
+      (hasPrice
+        ?'<div class="iprice" onclick="event.stopPropagation();editItem(\''+i.id+'\')">'+price+'</div>'+prevHTML+changeHTML
+        :'<div class="iprice" style="color:var(--t3);font-size:11px" onclick="event.stopPropagation();quickEditPrice(\''+i.id+'\')">✏ Precio</div>')+
+    '</div>'+
     '<div class="idot" style="background:'+cat.col+'"></div>'+
     '<button class="idel" data-id="'+i.id+'" onclick="delItem(event,\''+i.id+'\')">✕</button>'+
   '</div>';
 }
-
 function renderList(){ renderLTabs(); renderCatFilt(); renderItems(); renderFreq(); }
 function selList(id){ curListId=id; filtCat='all'; renderList(); }
 function setFilt(f){ filtCat=f; renderCatFilt(); renderItems(); }
@@ -894,7 +996,11 @@ function handleItemPhoto(inp){
 function saveItem(){
   var name=document.getElementById('iName').value.trim();
   if(!name){ toast('Introduce un nombre'); return; }
-  items.push({id:uid(),listId:document.getElementById('iListSel').value||curListId,name:name,qty:parseFloat(document.getElementById('iQty').value)||1,unit:document.getElementById('iUnit').value,price:parseFloat(document.getElementById('iPrice').value)||0,catId:selICat,notes:document.getElementById('iNotes').value.trim(),photo:itemPhotoData,checked:false,createdAt:Date.now()});
+  var newPrice=parseFloat(document.getElementById('iPrice').value)||0;
+  items.push({id:uid(),listId:document.getElementById('iListSel').value||curListId,name:name,qty:parseFloat(document.getElementById('iQty').value)||1,unit:document.getElementById('iUnit').value,price:newPrice,catId:selICat,notes:document.getElementById('iNotes').value.trim(),photo:itemPhotoData,checked:false,createdAt:Date.now()});
+  if(newPrice>0) savePriceHistory(name,newPrice,'',today());
+  // Restore save button in case it was in edit mode
+  document.querySelector('#ovItem .btn-gr').onclick=saveItem;
   sv('hg_items',items); hideOv('ovItem'); renderList(); toast('✓ '+name+' añadido');
 }
 
@@ -1242,7 +1348,11 @@ function saveTicket(){
   var id=uid();
   // Store photo in separate key to avoid huge JSON
   sv('hg_ticket_'+id, ticketPhotoData);
-  gastos.push({id:id,type:'expense',desc:document.getElementById('tDesc').value.trim()||document.getElementById('tShop').value.trim()||'Ticket',shop:document.getElementById('tShop').value.trim(),amount:amt,catId:selTCat,date:document.getElementById('tDate').value||today(),recurring:false,hasTicket:true,createdAt:Date.now()});
+  var tShop2=document.getElementById('tShop').value.trim();
+  var tDesc2=document.getElementById('tDesc').value.trim();
+  var tDate2=document.getElementById('tDate').value||today();
+  gastos.push({id:id,type:'expense',desc:tDesc2||tShop2||'Ticket',shop:tShop2,amount:amt,catId:selTCat,date:tDate2,recurring:false,hasTicket:true,createdAt:Date.now()});
+  if(tShop2) savePriceHistory(tShop2,amt,tShop2,tDate2);
   sv('hg_gastos',gastos); hideOv('ovTicket'); renderGastos(); toast('🧾 Ticket archivado — '+f2(amt)+'€');
 }
 
@@ -1346,6 +1456,33 @@ function renderResumen(){
     ins.forEach(function(i){ html+='<div class="ins-row"><span class="ins-ico">'+i.ico+'</span><div class="ins-text">'+i.text+'</div></div>'; });
     html+='</div>';
   }
+  // Price history comparator
+  var ph=ld('hg_ph',{});
+  var phKeys=Object.keys(ph).filter(function(k){ return ph[k].length>=2; });
+  if(phKeys.length){
+    html+='<div class="rcard"><div class="rctitle">💹 Comparador de precios</div>';
+    phKeys.sort(function(a,b){
+      return (ph[b][ph[b].length-1].ts||0)-(ph[a][ph[a].length-1].ts||0);
+    }).slice(0,8).forEach(function(k){
+      var hist=ph[k]; var last=hist[hist.length-1]; var prev=hist[hist.length-2];
+      var diff=last.price-prev.price; var pct=Math.round(diff/prev.price*100);
+      var up=diff>0.001; var down=diff<-0.001;
+      html+='<div class="ins-row">'+
+        '<span class="ins-ico" style="font-size:14px;margin-top:2px">'+(up?'📈':down?'📉':'➡')+'</span>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(k)+'</div>'+
+          '<div style="font-size:10px;color:var(--t3)">'+esc(last.date)+(last.shop?' · '+esc(last.shop):'')+'</div>'+
+        '</div>'+
+        '<div style="text-align:right;flex-shrink:0;margin-left:8px">'+
+          '<div style="font-family:monospace;font-size:14px;font-weight:700">'+f2(last.price)+'€</div>'+
+          (up||down?
+            '<div style="font-size:11px;font-weight:700;color:'+(up?'var(--red)':'var(--green)')+'">'+(up?'▲+':'▼')+f2(Math.abs(diff))+'€ ('+(up?'+':'')+pct+'%)</div>'+
+            '<div style="font-size:10px;color:var(--t3)">antes: '+f2(prev.price)+'€</div>':'')+'</div>'+
+      '</div>';
+    });
+    html+='</div>';
+  }
+
   el.innerHTML=html;
 }
 
