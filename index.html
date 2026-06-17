@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Hogar — Lista y Gastos</title>
+<meta name="version" content="2.0">
 <meta name="theme-color" content="#0a0b0e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -399,7 +400,7 @@ input[type=file]{display:none}
 <!-- ══ AJUSTES ══ -->
 <div class="view" id="view-ajustes">
   <div class="rscroll">
-    <div class="rgreet" style="margin-bottom:14px">⚙️ Ajustes</div>
+    <div class="rgreet" style="margin-bottom:14px">⚙️ Ajustes <span style="font-size:10px;color:var(--t3);font-weight:400">v2.0</span></div>
 
     <div class="rcard" id="syncCard">
       <div class="rctitle">🔄 Sincronizar con NutritrackPro</div>
@@ -449,10 +450,17 @@ input[type=file]{display:none}
       <div class="rctitle">🗑 Datos</div>
       <div class="set-row">
         <div class="set-body">
-          <div class="set-lbl">Borrar todos los datos</div>
+          <div class="set-lbl">Borrar catálogo de alimentos</div>
+          <div class="set-sub">Elimina todos los alimentos importados (no afecta a las listas)</div>
+        </div>
+        <button class="btn btn-r" onclick="clearCatalog()">Borrar catálogo</button>
+      </div>
+      <div class="set-row" style="border-top:1px solid var(--bd);padding-top:10px;margin-top:10px">
+        <div class="set-body">
+          <div class="set-lbl" style="color:var(--red)">Borrar todos los datos</div>
           <div class="set-sub">Elimina listas, artículos, gastos y configuración</div>
         </div>
-        <button class="btn btn-r" onclick="clearAll()">Borrar</button>
+        <button class="btn btn-r" onclick="clearAll()">Borrar todo</button>
       </div>
     </div>
   </div>
@@ -1062,7 +1070,28 @@ function itemRowHTML(i,cat){
     '<button class="idel" data-id="'+i.id+'" onclick="delItem(event,\''+i.id+'\')">✕</button>'+
   '</div>';
 }
-function renderList(){ renderLTabs(); renderCatFilt(); renderItems(); renderFreq(); }
+var NUTRI_FOODS={omega3:['Salmón','Atún','Caballa','Sardinas','Nueces','Semillas de lino','Chía','Aceite de oliva'],fiber:['Avena','Lentejas','Garbanzos','Alubias','Brócoli','Espinacas','Aguacate','Pan integral'],protein:['Pollo','Huevos','Carne','Pescado','Lentejas','Tofu','Queso','Yogur griego'],calcium:['Leche','Yogur','Queso','Sardinas','Brócoli','Espinacas','Almendras'],iron:['Carne roja','Espinacas','Lentejas','Garbanzos','Almejas','Huevos'],vitc:['Naranja','Kiwi','Pimiento','Brócoli','Fresas','Tomate'],vitd:['Salmón','Atún','Huevos','Leche enriquecida','Champiñones'],b12:['Sardinas','Atún','Carne','Huevos','Leche','Queso','Yogur'],magnesium:['Almendras','Espinacas','Anacardos','Lentejas','Aguacate','Plátano','Semillas de calabaza'],zinc:['Carne','Ostras','Semillas de calabaza','Garbanzos','Lentejas','Anacardos','Huevos']};
+var NUTRI_LABELS={omega3:'Omega 3',fiber:'Fibra',protein:'Proteína',calcium:'Calcio',iron:'Hierro',vitc:'Vitamina C',vitd:'Vitamina D',b12:'Vitamina B12',magnesium:'Magnesio',zinc:'Zinc'};
+function renderDeficit(){
+  var el=document.getElementById('freqWrap');
+  var deficits=ld('hg_deficits',[]);
+  if(!deficits.length){ renderFreq(); return; }
+  var html='<div class="freq-lbl" style="color:var(--red)">⚠️ Déficits detectados</div>';
+  deficits.forEach(function(d){
+    var key=d.key;
+    var foods=NUTRI_FOODS[key]||[];
+    var inCat=foods.filter(function(f){ return catalog.some(function(c){ return normKey(c.name)===normKey(f); }); });
+    if(!inCat.length) inCat=foods.slice(0,3);
+    html+='<div style="padding:8px 12px;background:var(--s3);border-radius:var(--r);margin-bottom:6px;border-left:3px solid var(--red)">'+
+      '<div style="font-size:12px;font-weight:700">'+esc(NUTRI_LABELS[key]||key)+' — '+d.pct+'% de la ingesta diaria</div>'+
+      '<div style="font-size:10px;color:var(--t3);margin:4px 0">Alimentos recomendados:</div>'+
+      '<div class="freq-row">'+
+      inCat.map(function(f){ return '<div class="fpill" onclick="addFreq(\''+esc(f)+'\')">+ '+esc(f)+'</div>'; }).join('')+
+      '</div></div>';
+  });
+  el.innerHTML=html;
+}
+function renderList(){ renderLTabs(); renderCatFilt(); renderItems(); renderDeficit(); }
 function selList(id){ curListId=id; filtCat='all'; renderList(); }
 function setFilt(f){ filtCat=f; renderCatFilt(); renderItems(); }
 
@@ -1123,15 +1152,22 @@ function qaSugPick(val){
 }
 
 function stripQtyPrefix(name){
+  var units='kg|g|gr|grs|l|ml|L|mg|oz|ud|uds|unidad(es)?|lat(as?)?|paquete(s)?|botella(s)?|barra(s)?|rebanada(s)?|loncha(s)?|trozo(s)?|pieza(s)?|rodaja(s)?|cucharada(s)?|mililitro(s)?|gramo(s)?|litro(s)?';
   var n=name.trim();
   // Quitar cantidad al inicio: "2 huevos", "200g queso", "1kg arroz"
-  var m=n.match(/^(\d+[.,]?\d*)\s*(kg|g|l|ml|L|ud|uds|unidad|unidades|latas?|paquetes?|botellas?|barra|barras|rebanada|loncha)\s+(.*)/i);
+  var m=n.match(new RegExp('^(\\d+[.,]?\\d*)\\s*('+units+')\\s+(.*)','i'));
   if(m) return m[3].trim();
   m=n.match(/^(\d+)\s+(.*)/);
   if(m) return m[2].trim();
-  // Quitar cantidad al final: "Aguacate 100g", "Pollo 150gr", "Leche 1l"
-  m=n.match(/^(.*?)\s+\d+[.,]?\d*\s*(kg|g|gr|l|ml|L|mg|oz)?$/i);
-  if(m) return m[1].trim();
+  // Quitar cantidad en medio/final con unidad: "Aguacate 100g", "Arroz 200g (cocido)"
+  m=n.match(new RegExp('^(.*?)\\s+(\\d+[.,]?\\d*)\\s*('+units+')(?:[,\\s]+(.*))?$','i'));
+  if(m) return (m[1]+' '+(m[4]||'')).trim();
+  // Quitar solo número al final: "Pan 4", "Huevos 6 uds" (sin fecha)
+  m=n.match(/^(.*?)\s+\d+\s*(.*)$/);
+  if(m && m[1] && m[1].length>2){
+    var r=(m[1]+' '+m[2]).trim();
+    if(r) return r;
+  }
   return n;
 }
 function qaAdd(){
@@ -1874,9 +1910,11 @@ function saveBudgets(){
 }
 /* ── Exportación / sincronización con NutritrackPro ── */
 function addToCatalog(name,catId){
-  var key=name.toLowerCase().trim();
-  var exists=catalog.some(function(c){ return c.name.toLowerCase().trim()===key; });
-  if(!exists) catalog.push({name:name.trim(),catId:catId||guessCat(name)});
+  var clean=stripQtyPrefix(name);
+  if(!clean) clean=name.trim();
+  var key=normKey(clean);
+  var exists=catalog.some(function(c){ return normKey(c.name)===key; });
+  if(!exists) catalog.push({name:clean,catId:catId||guessCat(clean)});
 }
 /* ── Importar desde NutritrackPro ── */
 function importFromNutritrack(inp){
@@ -1894,8 +1932,11 @@ function importFromNutritrack(inp){
       else if(data.alimentos&&data.alimentos.length) alimentos=data.alimentos;
 
       // Formato 2: backup completo de NutritrackPro (data.days)
+      var deficits=[], dayCount=0, totals={};
       if(!alimentos.length&&data.days){
         var seen={};
+        var RDA={kcal:2000,protein:55,carbs:280,fat:65,fiber:28,sugar:50,omega3:1.3,omega6:12,vitc:90,iron:14,calcium:950};
+        var nutriKeys=Object.keys(RDA);
         Object.keys(data.days).forEach(function(dateKey){
           var day=data.days[dateKey];
           if(day.foods&&day.foods.length){
@@ -1909,7 +1950,26 @@ function importFromNutritrack(inp){
               }
             });
           }
+          if(day.totals){
+            dayCount++;
+            nutriKeys.forEach(function(k){
+              var v=parseFloat(day.totals[k]);
+              if(!isNaN(v)) totals[k]=(totals[k]||0)+v;
+            });
+          }
         });
+        // Calcular déficits
+        if(dayCount>0){
+          var avg={};
+          nutriKeys.forEach(function(k){ avg[k]=(totals[k]||0)/dayCount; });
+          deficits=nutriKeys.filter(function(k){
+            return avg[k]<RDA[k]*0.7 && RDA[k]>0;
+          }).map(function(k){
+            var pct=Math.round(avg[k]/RDA[k]*100);
+            return {key:k,pct:pct,avg:Math.round(avg[k]*10)/10,goal:RDA[k]};
+          });
+          sv('hg_deficits',deficits);
+        }
       }
 
       if(!alimentos.length){ toast('⚠️ No se encontraron alimentos en el archivo'); return; }
@@ -1920,7 +1980,9 @@ function importFromNutritrack(inp){
       });
       sv('hg_catalog',catalog);
       renderList();
-      toast('✅ '+alimentos.length+' alimentos añadidos al catálogo');
+      var msg='✅ '+alimentos.length+' alimentos añadidos';
+      if(deficits.length) msg+=' · ⚠️ '+deficits.length+' déficits detectados';
+      toast(msg);
     }catch(err){ toast('⚠️ Error al leer el archivo: '+err.message); }
   };
   reader.readAsText(file);
@@ -1963,6 +2025,12 @@ function copyToClip(text){
   }
 }
 
+function clearCatalog(){
+  if(!confirm('¿Borrar todos los alimentos del catálogo?')) return;
+  catalog=[];
+  sv('hg_catalog',catalog);
+  renderList(); toast('🗑 Catálogo borrado');
+}
 function clearAll(){
   if(!confirm('¿Borrar todos los datos?')) return;
   var keys=Object.keys(localStorage).filter(function(k){ return k.startsWith('hg_'); });
