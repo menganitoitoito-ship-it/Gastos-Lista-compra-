@@ -112,6 +112,8 @@ html,body{height:100%;background:var(--bg);color:var(--t1);font-family:var(--f);
 .cat-row:hover{border-color:var(--bd2);background:var(--s3)}
 .cat-row:active{transform:scale(.985)}
 .cat-row.inlist{opacity:.5;pointer-events:none}
+.edit-badge{font-size:12px;cursor:pointer;padding:2px 4px;opacity:.4;transition:opacity .15s}
+.edit-badge:hover{opacity:1}
 .add-badge{font-size:10px;font-weight:700;color:var(--ps);padding:3px 8px;border-radius:20px;background:rgba(162,119,255,.12)}
 .irow{display:flex;align-items:center;gap:10px;padding:11px 13px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--r);margin-bottom:5px;cursor:pointer;user-select:none;transition:all .15s}
 .irow:hover{border-color:var(--bd2)}
@@ -524,6 +526,20 @@ input[type=file]{display:none}
   </div>
 </div>
 
+<!-- Modal: Editar alimento del catálogo -->
+<div class="ov" id="ovEditCat">
+  <div class="sheet">
+    <div class="shdl"></div>
+    <div class="shtitle">Editar alimento</div>
+    <div class="fg"><label>Nombre</label><input class="fi" id="ecName" placeholder="Nombre del alimento"></div>
+    <div class="fg"><label>Categoría</label><div class="cgpick" id="ecCatPick"></div></div>
+    <div class="fa">
+      <button class="btn btn-g" onclick="hideOv('ovEditCat');ecIdx=null">Cancelar</button>
+      <button class="btn btn-gr" onclick="saveEditCatalog()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal: Nueva lista -->
 <div class="ov" id="ovList">
   <div class="sheet">
@@ -895,6 +911,33 @@ function addFoodToList(){
 function addFromCatalog(name){
   openAddFoodOverlay(name);
 }
+var ecIdx=null;
+function openEditCatalog(name){
+  var idx=catalog.findIndex(function(c){ return c.name===name; });
+  if(idx===-1){ toast('No encontrado'); return; }
+  ecIdx=idx;
+  var c=catalog[idx];
+  document.getElementById('ecName').value=c.name;
+  document.getElementById('ecCatPick').innerHTML=ICATS.map(function(cat){
+    return '<div class="cgp'+(cat.id===c.catId?' on':'')+'" title="'+cat.name+'" data-c="'+cat.id+'" onclick="selEC(this,\''+cat.id+'\')">'+cat.ico+'</div>';
+  }).join('');
+  showOv('ovEditCat');
+}
+function selEC(el,id){
+  el.closest('.cgpick').querySelectorAll('.cgp').forEach(function(x){ x.classList.remove('on'); });
+  el.classList.add('on');
+}
+function saveEditCatalog(){
+  if(ecIdx===null) return;
+  var name=document.getElementById('ecName').value.trim();
+  if(!name){ toast('Introduce un nombre'); return; }
+  var catId=document.querySelector('#ecCatPick .cgp.on').getAttribute('data-c');
+  catalog[ecIdx].name=name;
+  catalog[ecIdx].catId=catId;
+  sv('hg_catalog',catalog);
+  hideOv('ovEditCat'); ecIdx=null;
+  renderList(); toast('✏️ Alimento actualizado');
+}
 function renderItems(){
   var el=document.getElementById('iScroll');
   var ci=items.filter(function(i){ return i.listId===curListId; });
@@ -938,9 +981,12 @@ function renderItems(){
         var cat=ICATS.find(function(c){ return c.id===cid; })||ICATS[ICATS.length-1];
         cg[cid].forEach(function(c){
           var inList=ci.some(function(i){ return i.name.toLowerCase()===c.name.toLowerCase(); });
-          html+='<div class="cat-row'+(inList?' inlist':'')+'" onclick="addFromCatalog(\''+esc(c.name)+'\')">'+esc(c.name)+
+          html+='<div class="cat-row'+(inList?' inlist':'')+'" onclick="addFromCatalog(\''+esc(c.name)+'\')">'+
+            '<span>'+esc(c.name)+'</span>'+
+            '<span style="display:flex;align-items:center;gap:6px">'+
+            '<span class="edit-badge" onclick="event.stopPropagation();openEditCatalog(\''+esc(c.name)+'\')">✏️</span>'+
             (inList?'<span class="add-badge" style="background:rgba(46,201,122,.12);color:var(--gr)">✓ En lista</span>':
-            '<span class="add-badge">+ Añadir</span>')+'</div>';
+            '<span class="add-badge">+ Añadir</span>')+'</span></div>';
         });
       });
     }
@@ -1152,7 +1198,7 @@ function qaSugPick(val){
 }
 
 function stripQtyPrefix(name){
-  var units='kg|g|gr|grs|l|ml|L|mg|oz|ud|uds|unidad(es)?|lat(as?)?|paquete(s)?|botella(s)?|barra(s)?|rebanada(s)?|loncha(s)?|trozo(s)?|pieza(s)?|rodaja(s)?|cucharada(s)?|mililitro(s)?|gramo(s)?|litro(s)?';
+  var units='kg|g|gr|grs|l|ml|cl|L|mg|oz|ud|uds|unidad(es)?|lat(as?)?|paquete(s)?|botella(s)?|barra(s)?|rebanada(s)?|loncha(s)?|trozo(s)?|pieza(s)?|rodaja(s)?|cucharada(s)?|mililitro(s)?|gramo(s)?|litro(s)?|spray|sprays|cápsula(s)?|comprimido(s)?|pastilla(s)?|gota(s)?|sobre(s)?|ampolla(s)?|cucharadita(s)?|pellizco(s)?|chorrito(s)?|vaso(s)?|taza(s)?|ración(es)?|porción(es)?';
   var n=name.trim();
   // Quitar cantidad al inicio: "2 huevos", "200g queso", "1kg arroz"
   var m=n.match(new RegExp('^(\\d+[.,]?\\d*)\\s*('+units+')\\s+(.*)','i'));
@@ -1168,6 +1214,9 @@ function stripQtyPrefix(name){
     var r=(m[1]+' '+m[2]).trim();
     if(r) return r;
   }
+  // Quitar palabras de unidad/medida sueltas al final: "Aceite spray", "Leche ml"
+  m=n.match(/^(.*?)\s+(spray|sprays|envase|bote|frasco|bolsa|pack|lata)\s*$/i);
+  if(m && m[1].length>3) return m[1].trim();
   return n;
 }
 function qaAdd(){
