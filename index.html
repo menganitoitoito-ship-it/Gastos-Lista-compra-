@@ -689,7 +689,7 @@ input[type=file]{display:none}
 <script>
 /* ══ UTILS ══ */
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
-function esc(s){ var d=document.createElement('div');d.textContent=s||'';return d.innerHTML; }
+function esc(s){ try{ var d=document.createElement('div');d.textContent=s||'';return d.innerHTML; }catch(e){ return ''; } }
 function f2(n){ return parseFloat(n||0).toFixed(2); }
 function ld(k,d){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch(e){ return d; } }
 function sv(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
@@ -773,7 +773,10 @@ items.forEach(function(i){
 });
 if(norm) sv('hg_items',items);
 
-function normKey(s){ return s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function normKey(s){
+  if(typeof s!=='string') return '';
+  try{ return s.toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }catch(e){ return s.toLowerCase().trim(); }
+}
 
 var catalog=ld('hg_catalog',[]);
 // Migración: si catálogo vacío, poblarlo desde items existentes
@@ -1198,25 +1201,26 @@ function qaSugPick(val){
 }
 
 function stripQtyPrefix(name){
+  if(typeof name!=='string') return '';
   var units='kg|g|gr|grs|l|ml|cl|L|mg|oz|ud|uds|unidad(es)?|lat(as?)?|paquete(s)?|botella(s)?|barra(s)?|rebanada(s)?|loncha(s)?|trozo(s)?|pieza(s)?|rodaja(s)?|cucharada(s)?|mililitro(s)?|gramo(s)?|litro(s)?|spray|sprays|cápsula(s)?|comprimido(s)?|pastilla(s)?|gota(s)?|sobre(s)?|ampolla(s)?|cucharadita(s)?|pellizco(s)?|chorrito(s)?|vaso(s)?|taza(s)?|ración(es)?|porción(es)?';
   var n=name.trim();
   // Quitar cantidad al inicio: "2 huevos", "200g queso", "1kg arroz"
   var m=n.match(new RegExp('^(\\d+[.,]?\\d*)\\s*('+units+')\\s+(.*)','i'));
-  if(m) return m[3].trim();
+  if(m && m[3]!=null) return m[3].trim();
   m=n.match(/^(\d+)\s+(.*)/);
-  if(m) return m[2].trim();
+  if(m && m[2]!=null) return m[2].trim();
   // Quitar cantidad en medio/final con unidad: "Aguacate 100g", "Arroz 200g (cocido)"
   m=n.match(new RegExp('^(.*?)\\s+(\\d+[.,]?\\d*)\\s*('+units+')(?:[,\\s]+(.*))?$','i'));
-  if(m) return (m[1]+' '+(m[4]||'')).trim();
+  if(m && m[1]!=null) return (m[1]+' '+(m[4]||'')).trim();
   // Quitar solo número al final: "Pan 4", "Huevos 6 uds" (sin fecha)
   m=n.match(/^(.*?)\s+\d+\s*(.*)$/);
-  if(m && m[1] && m[1].length>2){
+  if(m && m[1] && m[1].length>2 && m[2]!=null){
     var r=(m[1]+' '+m[2]).trim();
     if(r) return r;
   }
   // Quitar palabras de unidad/medida sueltas al final: "Aceite spray", "Leche ml"
   m=n.match(/^(.*?)\s+(spray|sprays|envase|bote|frasco|bolsa|pack|lata)\s*$/i);
-  if(m && m[1].length>3) return m[1].trim();
+  if(m && m[1] && m[1].length>3) return m[1].trim();
   return n;
 }
 function qaAdd(){
@@ -1229,6 +1233,7 @@ function addFreq(name){
   openAddFoodOverlay(stripQtyPrefix(name)||name);
 }
 function guessCat(n){
+  if(typeof n!=='string') return 'otros';
   n=n.toLowerCase();
   if(/leche|queso|yogur|mantequilla|nata|requesón|cuajada|batido/.test(n)) return 'lacteo';
   if(/pan|baguette|bollo|croissant|magdalena|bizcocho|torta|panecillo|mollete|chapata|cereales|avena|granola|copos.*avena|pan.*rallado/.test(n)) return 'panad';
@@ -2025,14 +2030,14 @@ function importFromNutritrack(inp){
       alimentos.forEach(function(a){
         var name=a.nombre||a.name||a.alimento||'';
         if(!name.trim()) return;
-        addToCatalog(name,NUTRIMAP[(a.categoria||'').toLowerCase()]);
+        addToCatalog(name,NUTRIMAP[String(a.categoria||'').toLowerCase()]);
       });
       sv('hg_catalog',catalog);
       renderList();
       var msg='✅ '+alimentos.length+' alimentos añadidos';
       if(deficits.length) msg+=' · ⚠️ '+deficits.length+' déficits detectados';
       toast(msg);
-    }catch(err){ toast('⚠️ Error al leer el archivo: '+err.message); }
+    }catch(err){ console.error(err); toast('⚠️ '+err.message); }
   };
   reader.readAsText(file);
   inp.value='';
