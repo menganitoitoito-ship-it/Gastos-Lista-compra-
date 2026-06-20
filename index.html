@@ -2128,38 +2128,53 @@ function doPrint(){
     printOpts.prices=document.getElementById('prPrices').checked;
   }
   hideOv('ovPrint');
+  var now=new Date();
+  var dateStr=now.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
   var h=buildReportHTML(printOpts.period,printOpts);
-  var pr=document.getElementById('printReport');
-  if(!pr) return;
-  pr.innerHTML='<div style="padding:10px 20px"><h1 style="font-size:22px;font-weight:900;margin:0 0 3px;color:#111">Informe financiero</h1>'+
-    '<div style="font-size:11px;color:#555;margin-bottom:16px">Hogar - '+new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})+'.</div>'+
-    h+'</div>';
-  // Hide app, show report
-  document.querySelector('.app').style.display='none';
-  document.querySelector('.nav').style.display='none';
-  document.querySelector('.toast').style.display='none';
-  var ovs=document.querySelectorAll('.ov');
-  for(var i=0;i<ovs.length;i++) ovs[i].style.display='none';
-  var sm=document.querySelector('.sm');
-  if(sm) sm.style.display='none';
-  pr.style.display='block';
-  // Force reflow
-  void pr.offsetHeight;
-  // Print
-  window.print();
-  // Restore after print
-  var restore=function(){
-    pr.style.display='none'; pr.innerHTML='';
-    var app=document.querySelector('.app'); if(app) app.style.display='';
-    var nav=document.querySelector('.nav'); if(nav) nav.style.display='';
-    var to=document.querySelector('.toast'); if(to) to.style.display='';
-    var ovs2=document.querySelectorAll('.ov');
-    for(var j=0;j<ovs2.length;j++) ovs2[j].style.display='';
-    var sm2=document.querySelector('.sm'); if(sm2) sm2.style.display='';
-    window.onafterprint=null;
-  };
-  window.onafterprint=restore;
-  setTimeout(restore,10000);
+  var style='@page{size:A4;margin:12mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,sans-serif;font-size:12px;color:#111;line-height:1.5;padding:10px 20px;max-width:800px;margin:0 auto;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}img{max-width:100%}h1{font-size:22px;font-weight:900;margin:0 0 3px}h2{font-size:16px;font-weight:800;margin:16px 0 8px}.card{background:#f5f5f5;border-radius:8px;padding:12px;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}.stat{padding:10px;border-radius:8px;text-align:center}.stat-val{font-size:18px;font-weight:800;margin-bottom:2px}.stat-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#555}.chart{display:flex;align-items:flex-end;gap:4px;height:80px;padding-bottom:2px;margin-bottom:16px}.ch-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}.ch-bar-inner{width:100%;border-radius:3px 3px 0 0;min-height:3px;background:#2563eb}.ch-lbl{font-size:8px;color:#666;font-weight:600}.row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #e0e0e0}.row-num{font-size:10px;font-weight:800;color:#888;min-width:20px}.row-name{font-size:12px;font-weight:600;flex:1}.row-bar{width:60px;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden}.row-bar-fill{height:100%;border-radius:3px;background:#2563eb}.row-amt{font-size:12px;font-weight:700;font-family:monospace;min-width:65px;text-align:right}.row-pct{font-size:9px;color:#777;font-family:monospace;min-width:32px;text-align:right}.spark{display:flex;align-items:flex-end;gap:2px;height:24px;margin:0 6px}.spark-bar{width:10px;border-radius:2px 2px 0 0}.footer{margin-top:16px;padding-top:10px;border-top:2px solid #bbb;font-size:9px;color:#555;text-align:center}@media print{body{padding:0}.card{break-inside:avoid}}';
+  var bodyHTML='<h1 style="font-size:22px;font-weight:900;margin:0 0 3px;color:#111">Informe financiero</h1><div style="font-size:11px;color:#555;margin-bottom:16px">Hogar - '+dateStr+'.</div>'+
+    h+'<div style="margin-top:16px;padding-top:10px;border-top:2px solid #bbb;font-size:9px;color:#555;text-align:center">Hogar - Informe generado el '+dateStr+'</div>';
+  var fullHTML='<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informe financiero</title><style>'+style+'</style></head><body><div style="padding:10px 20px">'+bodyHTML+'</div></body></html>';
+  // PWA de iOS: window.print() no funciona, mostramos el informe y compartimos
+  if(window.navigator.standalone){
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:#fff;overflow-y:auto;display:flex;flex-direction:column';
+    ov.innerHTML='<div style="display:flex;gap:8px;padding:10px 12px;border-bottom:1px solid #ddd;flex-shrink:0;background:#f8f9fa">'+
+      '<button id="pBack" style="flex:1;padding:8px;border:1px solid #ccc;border-radius:8px;background:#fff;font-size:13px;font-weight:600">⬅ Volver</button>'+
+      '<button id="pShare" style="flex:1;padding:8px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-size:13px;font-weight:600">📤 Compartir</button>'+
+      '</div>'+
+      '<div style="flex:1;overflow-y:auto;padding:12px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:12px;color:#111;line-height:1.5">'+bodyHTML+'</div>';
+    document.body.appendChild(ov);
+    document.getElementById('pBack').onclick=function(){ document.body.removeChild(ov); };
+    document.getElementById('pShare').onclick=function(){
+      try{
+        var blob=new Blob([fullHTML],{type:'text/html'});
+        if(navigator.share){
+          // Intentar compartir como archivo
+          if(navigator.canShare&&navigator.canShare({files:[new File([blob],'informe.html',{type:'text/html'})]})){
+            navigator.share({files:[new File([blob],'informe.html',{type:'text/html'})],title:'Informe financiero'}).catch(function(){});
+          }else{
+            navigator.share({title:'Informe financiero',text:'Informe de gastos\n\n'+bodyHTML.replace(/<[^>]+>/g,'').slice(0,5000)}).catch(function(){});
+          }
+        }else{
+          var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='informe.html'; a.click();
+        }
+      }catch(e){ toast('Error al compartir'); }
+    };
+    return;
+  }
+  try{
+    document.open();
+    document.write(fullHTML);
+    document.close();
+    setTimeout(function(){
+      window.print();
+      setTimeout(function(){ location.reload(); },1000);
+    },500);
+  }catch(e){
+    toast('Error: '+e.message);
+    location.reload();
+  }
 }
 
 /* ══ ANÁLISIS ══ */
