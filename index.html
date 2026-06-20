@@ -1965,9 +1965,9 @@ function buildReportHTML(period){
   var ph=ld('hg_ph',{});
   var phKeys=Object.keys(ph).filter(function(k){ return ph[k].length>=2; }).sort(function(a,b){ return (ph[b][ph[b].length-1].ts||0)-(ph[a][ph[a].length-1].ts||0); }).slice(0,10);
 
-  var html='<div style="text-align:center;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #2ec97a">'+
-    '<h1 style="font-size:24px;font-weight:900;margin:0 0 4px">📊 Informe financiero</h1>'+
-    '<div style="font-size:12px;color:#666">'+periodLabels[period]+' · '+now.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})+'</div></div>';
+  var html='<div style="text-align:center;margin-bottom:20px;padding-bottom:14px;border-bottom:3px solid #1b8a4a">'+
+    '<h1 style="font-size:22px;font-weight:900;margin:0 0 3px;color:#111">📊 Informe financiero</h1>'+
+    '<div style="font-size:11px;color:#333">'+periodLabels[period]+' · '+now.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})+'</div></div>';
 
   var incGastos=document.getElementById('prGastos').checked;
   var incRankCat=document.getElementById('prRankCat').checked;
@@ -1975,11 +1975,11 @@ function buildReportHTML(period){
   var incPrices=document.getElementById('prPrices').checked;
 
   if(incGastos){
-    html+='<h2 style="font-size:18px;font-weight:800;margin:0 0 12px;color:#333">📊 Resumen de gastos</h2>'+
-      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:20px">'+
-      '<div style="background:#e8f5e9;border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800;color:#2e7d32">+'+f2(inc)+'€</div><div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Ingresos</div></div>'+
-      '<div style="background:#ffebee;border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800;color:#c62828">-'+f2(exp)+'€</div><div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Gastos</div></div>'+
-      '<div style="background:'+(bal>=0?'#e3f2fd':'#fff3e0')+';border-radius:10px;padding:12px;text-align:center"><div style="font-size:20px;font-weight:800;color:'+(bal>=0?'#1565c0':'#e65100')+'">'+f2(bal)+'€</div><div style="font-size:10px;color:#666;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Balance</div></div></div>';
+    html+='<h2 style="font-size:16px;font-weight:800;margin:0 0 10px;color:#111">📊 Resumen de gastos</h2>'+
+      '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px">'+
+      '<div style="background:#e8f5e9;border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:#1b5e20">+'+f2(inc)+'€</div><div style="font-size:9px;color:#222;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Ingresos</div></div>'+
+      '<div style="background:#ffebee;border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:#b71c1c">-'+f2(exp)+'€</div><div style="font-size:9px;color:#222;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Gastos</div></div>'+
+      '<div style="background:'+(bal>=0?'#e3f2fd':'#fff3e0')+';border-radius:8px;padding:10px;text-align:center"><div style="font-size:18px;font-weight:800;color:'+(bal>=0?'#0d47a1':'#bf360c')+'">'+f2(bal)+'€</div><div style="font-size:9px;color:#222;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Balance</div></div></div>';
     // Chart
     var chartMonths=[];
     if(period==='total'){
@@ -1995,73 +1995,72 @@ function buildReportHTML(period){
       for(i=5;i>=0;i--){ var mm2=now.getMonth()-i,yy2=now.getFullYear();if(mm2<0){mm2+=12;yy2--;} t=gastos.filter(function(g){ var d=new Date(g.date+'T12:00:00'); return d.getFullYear()===yy2&&d.getMonth()===mm2&&g.type==='expense'; }).reduce(function(s,g){ return s+g.amount; },0); chartMonths.push({lbl:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][mm2]+(yy2!==now.getFullYear()?"'"+String(yy2).slice(2):''),total:t}); }
     }
     var mx=Math.max.apply(null,chartMonths.map(function(x){ return x.total; }))||1;
-    html+='<div style="margin-bottom:20px"><div style="font-size:13px;font-weight:700;color:#555;margin-bottom:6px">📈 Evolución mensual</div><div style="display:flex;align-items:flex-end;gap:4px;height:100px;padding-bottom:2px">';
+    html+='<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:#111;margin-bottom:4px">📈 Evolución mensual</div><div style="display:flex;align-items:flex-end;gap:3px;height:80px;padding-bottom:2px">';
     chartMonths.forEach(function(m){
-      var h=Math.max(4,Math.round((m.total/mx)*90));
-      html+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">'+
-        '<div style="font-size:9px;color:#888;font-family:monospace">'+(m.total>0?Math.round(m.total):'')+'</div>'+
-        '<div style="flex:1;width:100%;display:flex;align-items:flex-end"><div style="width:100%;height:'+h+'px;background:'+(m.isNow?'#4b96ff':'#2ec97a')+';border-radius:3px 3px 0 0;opacity:'+(m.isNow?1:.4)+'"></div></div>'+
-        '<div style="font-size:8px;color:#999;font-weight:600">'+m.lbl+'</div></div>';
+      var h=Math.max(3,Math.round((m.total/mx)*72));
+      html+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px">'+
+        '<div style="font-size:8px;color:#333;font-family:monospace;font-weight:600">'+(m.total>0?Math.round(m.total):'')+'</div>'+
+        '<div style="flex:1;width:100%;display:flex;align-items:flex-end"><div style="width:100%;height:'+h+'px;background:'+(m.isNow?'#1565c0':'#2e7d32')+';border-radius:2px 2px 0 0;opacity:'+(m.isNow?1:.4)+'"></div></div>'+
+        '<div style="font-size:7px;color:#444;font-weight:600">'+m.lbl+'</div></div>';
     });
     html+='</div></div>';
   }
 
   if(incRankCat&&ranked.length){
-    html+='<div style="margin-bottom:20px"><h2 style="font-size:18px;font-weight:800;margin:0 0 10px;color:#333">🏆 Ranking de gastos por categoría</h2>';
+    html+='<div style="margin-bottom:16px"><h2 style="font-size:16px;font-weight:800;margin:0 0 8px;color:#111">🏆 Ranking de gastos por categoría</h2>';
     ranked.forEach(function(cid,i){
-      var cat=GCATS.find(function(c){ return c.id===cid; })||{ico:'📦',name:'Otros',col:'#8b8f9c'};
+      var cat=GCATS.find(function(c){ return c.id===cid; })||{ico:'📦',name:'Otros',col:'#666'};
       var pct=exp>0?Math.round(catTots[cid]/exp*100):0;
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #eee">'+
-        '<span style="font-size:10px;font-weight:800;color:#aaa;min-width:20px">#'+(i+1)+'</span>'+
-        '<span style="font-size:16px">'+cat.ico+'</span>'+
-        '<span style="font-size:12px;font-weight:600;flex:1;color:#333">'+cat.name+'</span>'+
-        '<div style="width:80px;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+cat.col+';border-radius:3px"></div></div>'+
-        '<span style="font-size:12px;font-weight:700;font-family:monospace;min-width:70px;text-align:right;color:#111">'+f2(catTots[cid])+'€</span>'+
-        '<span style="font-size:9px;color:#aaa;font-family:monospace;min-width:35px;text-align:right">'+pct+'%</span></div>';
+      html+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #ddd">'+
+        '<span style="font-size:9px;font-weight:800;color:#555;min-width:18px">#'+(i+1)+'</span>'+
+        '<span style="font-size:14px">'+cat.ico+'</span>'+
+        '<span style="font-size:11px;font-weight:600;flex:1;color:#111">'+cat.name+'</span>'+
+        '<div style="width:60px;height:5px;background:#ddd;border-radius:2px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+cat.col+';border-radius:2px"></div></div>'+
+        '<span style="font-size:11px;font-weight:700;font-family:monospace;min-width:60px;text-align:right;color:#111">'+f2(catTots[cid])+'€</span>'+
+        '<span style="font-size:8px;color:#555;font-family:monospace;min-width:30px;text-align:right">'+pct+'%</span></div>';
     });
     html+='</div>';
   }
 
   if(incRankFood&&foodRanked.length){
-    html+='<div style="margin-bottom:20px"><h2 style="font-size:18px;font-weight:800;margin:0 0 10px;color:#333">🛒 Ranking de alimentos comprados</h2>';
+    html+='<div style="margin-bottom:16px"><h2 style="font-size:16px;font-weight:800;margin:0 0 8px;color:#111">🛒 Ranking de alimentos comprados</h2>';
     foodRanked.forEach(function(k,i){
       var f=foodCounts[k];
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #eee">'+
-        '<span style="font-size:10px;font-weight:800;color:#aaa;min-width:20px">#'+(i+1)+'</span>'+
-        '<span style="font-size:12px;font-weight:600;flex:1;color:#333">'+esc(f.name)+'</span>'+
-        '<span style="font-size:10px;color:#888">'+f.count+'x</span>'+
-        '<span style="font-size:12px;font-weight:700;font-family:monospace;color:#e65100">'+f2(f.totalSpent)+'€</span></div>';
+      html+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid #ddd">'+
+        '<span style="font-size:9px;font-weight:800;color:#555;min-width:18px">#'+(i+1)+'</span>'+
+        '<span style="font-size:11px;font-weight:600;flex:1;color:#111">'+esc(f.name)+'</span>'+
+        '<span style="font-size:10px;color:#444">'+f.count+'x</span>'+
+        '<span style="font-size:11px;font-weight:700;font-family:monospace;color:#bf360c">'+f2(f.totalSpent)+'€</span></div>';
     });
     html+='</div>';
   }
 
   if(incPrices&&phKeys.length){
-    html+='<div style="margin-bottom:20px"><h2 style="font-size:18px;font-weight:800;margin:0 0 10px;color:#333">📈 Evolución de precios</h2>';
+    html+='<div style="margin-bottom:16px"><h2 style="font-size:16px;font-weight:800;margin:0 0 8px;color:#111">📈 Evolución de precios</h2>';
     phKeys.forEach(function(k){
       var hist=ph[k]; var last=hist[hist.length-1]; var prev=hist[hist.length-2];
       var diff=last.price-prev.price; var pct=Math.round(diff/prev.price*100);
       var up=diff>0.001; var down=diff<-0.001;
-      // Mini sparkline
       var prices=hist.slice(-6);
       var minP=Math.min.apply(null,prices.map(function(p){ return p.price; }));
       var maxP=Math.max.apply(null,prices.map(function(p){ return p.price; }));
       var rangeP=Math.max(maxP-minP,0.01);
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eee">'+
-        '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#333">'+esc(k)+'</div>'+
-        '<div style="font-size:9px;color:#999">'+hist.length+' registros</div></div>'+
-        '<div style="display:flex;align-items:flex-end;gap:2px;height:28px;margin:0 8px">'+
+      html+='<div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid #ddd">'+
+        '<div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:#111">'+esc(k)+'</div>'+
+        '<div style="font-size:8px;color:#555">'+hist.length+' registros</div></div>'+
+        '<div style="display:flex;align-items:flex-end;gap:1px;height:22px;margin:0 4px">'+
         prices.map(function(p){
-          var hh=Math.max(3,Math.round((p.price-minP)/rangeP*24));
-          return '<div style="width:12px;height:'+hh+'px;background:'+(up?'#c62828':'#2e7d32')+';border-radius:2px 2px 0 0;opacity:.7"></div>';
+          var hh=Math.max(2,Math.round((p.price-minP)/rangeP*18));
+          return '<div style="width:10px;height:'+hh+'px;background:'+(up?'#c62828':'#2e7d32')+';border-radius:1px 1px 0 0;opacity:.7"></div>';
         }).join('')+'</div>'+
-        '<div style="text-align:right;flex-shrink:0"><div style="font-family:monospace;font-size:13px;font-weight:700;color:#333">'+f2(last.price)+'€</div>'+
-        (up||down?'<div style="font-size:9px;font-weight:700;color:'+(up?'#c62828':'#2e7d32')+'">'+(up?'▲':'▼')+Math.abs(pct)+'%</div>':'')+'</div></div>';
+        '<div style="text-align:right;flex-shrink:0"><div style="font-family:monospace;font-size:12px;font-weight:700;color:#111">'+f2(last.price)+'€</div>'+
+        (up||down?'<div style="font-size:8px;font-weight:700;color:'+(up?'#c62828':'#2e7d32')+'">'+(up?'▲':'▼')+Math.abs(pct)+'%</div>':'')+'</div></div>';
     });
     html+='</div>';
   }
 
   // Footer
-  html+='<div style="margin-top:20px;padding-top:12px;border-top:2px solid #ddd;font-size:10px;color:#aaa;text-align:center">Hogar — Informe generado el '+now.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})+'</div>';
+  html+='<div style="margin-top:16px;padding-top:10px;border-top:2px solid #bbb;font-size:9px;color:#555;text-align:center">Hogar — Informe generado el '+now.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'})+'</div>';
   return html;
 }
 function previewPrint(){
@@ -2072,27 +2071,40 @@ function previewPrint(){
 }
 function doPrint(){
   var period=document.getElementById('prPeriod').value;
-  var html=buildReportHTML(period);
-  var fullHTML='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Informe financiero</title>'+
-    '<style>@page{size:A4;margin:15mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,sans-serif;font-size:13px;color:#222;line-height:1.5;padding:30px;max-width:800px;margin:0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}img{max-width:100%}@media print{body{padding:0}}</style></head><body>'+html+'</body></html>';
-  var w=window.open('','_blank','width=900,height=700');
-  if(!w || w.closed || typeof w.closed==='undefined'){
-    // Popup blocked — descargar como HTML
-    var blob=new Blob([fullHTML],{type:'text/html'});
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(blob);
-    a.download='informe-'+period+'-'+new Date().toISOString().slice(0,10)+'.html';
-    document.body.appendChild(a); a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(a.href);
-    toast('📄 Descargado como HTML — ábrelo y usa Ctrl+P / Cmd+P para imprimir');
-    hideOv('ovPrint');
-    return;
-  }
-  w.document.write(fullHTML);
-  w.document.close();
-  w.focus();
-  setTimeout(function(){ w.print(); },600);
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informe financiero</title>'+
+    '<style>@page{size:A4;margin:12mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,sans-serif;font-size:12px;color:#111;line-height:1.5;padding:10px 20px;max-width:800px;margin:0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}img{max-width:100%}h1{font-size:22px}h2{font-size:16px;margin:16px 0 8px}.card{background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}.stat{padding:10px;border-radius:8px;text-align:center}.stat-val{font-size:18px;font-weight:800;margin-bottom:2px}.stat-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#555}.chart{display:flex;align-items:flex-end;gap:4px;height:80px;padding-bottom:2px;margin-bottom:16px}.ch-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}.ch-bar-inner{width:100%;border-radius:3px 3px 0 0;min-height:3px}.ch-lbl{font-size:8px;color:#666;font-weight:600}.row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #e0e0e0}.row-num{font-size:10px;font-weight:800;color:#888;min-width:20px}.row-name{font-size:12px;font-weight:600;flex:1;color:#111}.row-bar{width:60px;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden}.row-bar-fill{height:100%;border-radius:3px}.row-amt{font-size:12px;font-weight:700;font-family:monospace;min-width:65px;text-align:right;color:#111}.row-pct{font-size:9px;color:#777;font-family:monospace;min-width:32px;text-align:right}.spark{display:flex;align-items:flex-end;gap:2px;height:24px;margin:0 6px}.spark-bar{width:10px;border-radius:2px 2px 0 0}.footer{margin-top:20px;padding-top:10px;border-top:2px solid #ccc;font-size:9px;color:#888;text-align:center}@media print{body{padding:0}.card{background:#f5f5f5;break-inside:avoid}}</style></head><body>'+buildReportHTML(period)+'</body></html>';
+  // Guardar el contenido original de la app
+  var appEl=document.querySelector('.app');
+  var saved=appEl?appEl.outerHTML:'';
+  var body=document.body;
+  body.innerHTML=html;
+  // Forzar estilos inline para impresión
+  setTimeout(function(){
+    window.print();
+    // Restaurar después de imprimir
+    var checkPrint=setInterval(function(){
+      if(!document.querySelector('embed[type="application/pdf"]')&&!document.querySelector('object')){
+        clearInterval(checkPrint);
+        body.innerHTML=saved;
+        // Re-ejecutar init básico
+        var theme=ld('hg_light',matchMedia('(prefers-color-scheme:light)').matches);
+        toggleTheme(theme);
+        if(document.getElementById('themeToggle')) document.getElementById('themeToggle').checked=theme;
+        addRecurring(); renderList();
+        if(document.getElementById('gmlbl')) document.getElementById('gmlbl').textContent=mStr(curY,curM);
+      }
+    },1000);
+    setTimeout(function(){
+      clearInterval(checkPrint);
+      body.innerHTML=saved;
+      var theme2=ld('hg_light',matchMedia('(prefers-color-scheme:light)').matches);
+      toggleTheme(theme2);
+      if(document.getElementById('themeToggle')) document.getElementById('themeToggle').checked=theme2;
+      addRecurring(); renderList();
+      if(document.getElementById('gmlbl')) document.getElementById('gmlbl').textContent=mStr(curY,curM);
+    },8000);
+  },300);
+  hideOv('ovPrint');
 }
 
 /* ══ ANÁLISIS ══ */
