@@ -1918,10 +1918,19 @@ function renderResumen(){
   el.innerHTML=html;
 }
 var printModalHTML='';
+var printOpts={period:'mes',gastos:true,rankCat:true,rankFood:true,prices:true};
 function showPrintOptions(){
   var sheet=document.querySelector('#ovPrint .sheet');
   if(!printModalHTML) printModalHTML=sheet.innerHTML;
   sheet.innerHTML=printModalHTML;
+  // Restore saved values
+  var p=document.getElementById('prPeriod');
+  if(p) p.value=printOpts.period;
+  var setChk=function(id,val){ var el=document.getElementById(id); if(el) el.checked=val; };
+  setChk('prGastos',printOpts.gastos);
+  setChk('prRankCat',printOpts.rankCat);
+  setChk('prRankFood',printOpts.rankFood);
+  setChk('prPrices',printOpts.prices);
   showOv('ovPrint');
 }
 function getFilteredGastos(period){
@@ -1940,7 +1949,8 @@ function getFilteredGastos(period){
   if(period==='año') return gastos.filter(function(g){ var d=new Date(g.date+'T12:00:00'); return d.getFullYear()===now.getFullYear(); });
   return gastos;
 }
-function buildReportHTML(period){
+function buildReportHTML(period,opts){
+  opts=opts||{gastos:true,rankCat:true,rankFood:true,prices:true};
   var now=new Date();
   var periodLabels={mes:'Este mes ('+mStr(now.getFullYear(),now.getMonth())+')',trimestre:'Este trimestre',semestre:'Últimos 6 meses',año:'Año '+now.getFullYear(),total:'Total histórico'};
   var all=getFilteredGastos(period);
@@ -1969,10 +1979,10 @@ function buildReportHTML(period){
     '<h1 style="font-size:22px;font-weight:900;margin:0 0 3px;color:#111">📊 Informe financiero</h1>'+
     '<div style="font-size:11px;color:#333">'+periodLabels[period]+' · '+now.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})+'</div></div>';
 
-  var incGastos=document.getElementById('prGastos').checked;
-  var incRankCat=document.getElementById('prRankCat').checked;
-  var incRankFood=document.getElementById('prRankFood').checked;
-  var incPrices=document.getElementById('prPrices').checked;
+  var incGastos=opts.gastos;
+  var incRankCat=opts.rankCat;
+  var incRankFood=opts.rankFood;
+  var incPrices=opts.prices;
 
   if(incGastos){
     html+='<h2 style="font-size:16px;font-weight:800;margin:0 0 10px;color:#111">📊 Resumen de gastos</h2>'+
@@ -2064,15 +2074,28 @@ function buildReportHTML(period){
   return html;
 }
 function previewPrint(){
-  var period=document.getElementById('prPeriod').value;
-  var html=buildReportHTML(period);
+  var p=document.getElementById('prPeriod');
+  if(!p){ toast('Error: recarga la página'); return; }
+  printOpts.period=p.value;
+  printOpts.gastos=document.getElementById('prGastos').checked;
+  printOpts.rankCat=document.getElementById('prRankCat').checked;
+  printOpts.rankFood=document.getElementById('prRankFood').checked;
+  printOpts.prices=document.getElementById('prPrices').checked;
+  var html=buildReportHTML(printOpts.period,printOpts);
   var sheet=document.querySelector('#ovPrint .sheet');
   sheet.innerHTML='<div class="shdl"></div><div class="shtitle">👁 Vista previa</div><div style="background:#fff;border-radius:12px;padding:16px;max-height:60vh;overflow-y:auto;box-shadow:0 2px 12px rgba(0,0,0,.1)"><div id="printPreview" style="font-family:Inter,system-ui,sans-serif;font-size:13px;line-height:1.5;max-width:700px;margin:0 auto;color:#222">'+html+'</div></div><div class="fa"><button class="btn btn-g" onclick="showPrintOptions()">⬅ Volver</button><button class="btn btn-gr" onclick="doPrint()">🖨️ Imprimir</button></div>';
 }
 function doPrint(){
-  var period=document.getElementById('prPeriod').value;
+  var p=document.getElementById('prPeriod');
+  if(p){
+    printOpts.period=p.value;
+    printOpts.gastos=document.getElementById('prGastos').checked;
+    printOpts.rankCat=document.getElementById('prRankCat').checked;
+    printOpts.rankFood=document.getElementById('prRankFood').checked;
+    printOpts.prices=document.getElementById('prPrices').checked;
+  }
   var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Informe financiero</title>'+
-    '<style>@page{size:A4;margin:12mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,sans-serif;font-size:12px;color:#111;line-height:1.5;padding:10px 20px;max-width:800px;margin:0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}img{max-width:100%}h1{font-size:22px}h2{font-size:16px;margin:16px 0 8px}.card{background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}.stat{padding:10px;border-radius:8px;text-align:center}.stat-val{font-size:18px;font-weight:800;margin-bottom:2px}.stat-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#555}.chart{display:flex;align-items:flex-end;gap:4px;height:80px;padding-bottom:2px;margin-bottom:16px}.ch-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}.ch-bar-inner{width:100%;border-radius:3px 3px 0 0;min-height:3px}.ch-lbl{font-size:8px;color:#666;font-weight:600}.row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #e0e0e0}.row-num{font-size:10px;font-weight:800;color:#888;min-width:20px}.row-name{font-size:12px;font-weight:600;flex:1;color:#111}.row-bar{width:60px;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden}.row-bar-fill{height:100%;border-radius:3px}.row-amt{font-size:12px;font-weight:700;font-family:monospace;min-width:65px;text-align:right;color:#111}.row-pct{font-size:9px;color:#777;font-family:monospace;min-width:32px;text-align:right}.spark{display:flex;align-items:flex-end;gap:2px;height:24px;margin:0 6px}.spark-bar{width:10px;border-radius:2px 2px 0 0}.footer{margin-top:20px;padding-top:10px;border-top:2px solid #ccc;font-size:9px;color:#888;text-align:center}@media print{body{padding:0}.card{background:#f5f5f5;break-inside:avoid}}</style></head><body>'+buildReportHTML(period)+'</body></html>';
+    '<style>@page{size:A4;margin:12mm}*{margin:0;padding:0;box-sizing:border-box}body{font-family:Inter,system-ui,-apple-system,sans-serif;font-size:12px;color:#111;line-height:1.5;padding:10px 20px;max-width:800px;margin:0 auto;-webkit-print-color-adjust:exact;print-color-adjust:exact}img{max-width:100%}h1{font-size:22px}h2{font-size:16px;margin:16px 0 8px}.card{background:#f8f9fa;border-radius:8px;padding:12px;margin-bottom:12px}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:16px}.stat{padding:10px;border-radius:8px;text-align:center}.stat-val{font-size:18px;font-weight:800;margin-bottom:2px}.stat-lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#555}.chart{display:flex;align-items:flex-end;gap:4px;height:80px;padding-bottom:2px;margin-bottom:16px}.ch-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}.ch-bar-inner{width:100%;border-radius:3px 3px 0 0;min-height:3px}.ch-lbl{font-size:8px;color:#666;font-weight:600}.row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #e0e0e0}.row-num{font-size:10px;font-weight:800;color:#888;min-width:20px}.row-name{font-size:12px;font-weight:600;flex:1;color:#111}.row-bar{width:60px;height:6px;background:#e0e0e0;border-radius:3px;overflow:hidden}.row-bar-fill{height:100%;border-radius:3px}.row-amt{font-size:12px;font-weight:700;font-family:monospace;min-width:65px;text-align:right;color:#111}.row-pct{font-size:9px;color:#777;font-family:monospace;min-width:32px;text-align:right}.spark{display:flex;align-items:flex-end;gap:2px;height:24px;margin:0 6px}.spark-bar{width:10px;border-radius:2px 2px 0 0}.footer{margin-top:20px;padding-top:10px;border-top:2px solid #ccc;font-size:9px;color:#888;text-align:center}@media print{body{padding:0}.card{background:#f5f5f5;break-inside:avoid}}</style></head><body>'+buildReportHTML(printOpts.period,printOpts)+'</body></html>';
   // Guardar el contenido original de la app
   var appEl=document.querySelector('.app');
   var saved=appEl?appEl.outerHTML:'';
